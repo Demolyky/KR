@@ -1,6 +1,8 @@
 import requests
 import settings
 import json
+import time
+from threading import Thread
 
 
 class Profile:
@@ -21,7 +23,7 @@ class Profile:
             'v': version
         }
         response = requests.get(url, params={**params})
-        self.save_json(response, 'userinfo')
+        Thread(target=self.save_json, args=(response, 'userinfo',)).start()
         return response
 
     def photo_get(
@@ -39,7 +41,7 @@ class Profile:
         }
         response = requests.get(url, params={**params})
         self.search_photos_and_likes(response)
-        self.save_json(response, 'photos')
+        Thread(target=self.save_json, args=(response, 'photos',)).start()
         return response
 
     def save_json(self, response, file_name):
@@ -60,16 +62,20 @@ class Profile:
 
         return self.url_photos_profile
 
+    def download_photo(self):
+        for info_photos in self.url_photos_profile:
+            for likes, url in info_photos.items():
+                response = requests.get(url)
+                with open(f'{likes}.jpg', 'wb') as img:
+                    img.write(response.content)
+
     def __str__(self):
         return f'id: {self.user_id} Name: {Person.first_name}, Family: {Person.last_name}'
 
 
-Person = Profile(1)
+start_time = time.time()
+Person = Profile('405534986')
 Person.photo_get()
 print(Person.url_photos_profile)
-
-
-
-
-
-
+print(f'Время выполнения: {time.time() - start_time}')
+Person.download_photo()
