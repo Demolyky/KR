@@ -50,13 +50,14 @@ class Profile:
     def search_photos_and_likes(self, response):
         photos_info = response.json()
         url = ''
-        width_photo = 0
         for photos in photos_info['response']['items']:
+            width_photo = 0
             for photo in photos['sizes']:
                 if width_photo < photo['width']:
                     width_photo = photo['width']
                     url = photo['url']
             self.url_photos_profile.append({photos['likes']['count']: url})
+
         return self.url_photos_profile
 
     def __str__(self):
