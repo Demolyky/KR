@@ -4,12 +4,11 @@ import json
 import os
 from threading import Thread
 import sys
-import time
 
 
 class Profile:
     # класс работы с ВК
-    def __init__(self, user_id=settings.ID_VK):
+    def __init__(self, user_id='1'):
         self.access_token = settings.TOKEN_VK  # Токен для авторизации
         self.user_id = user_id  # ID пользователя
         profile_info = self.user_get(self.user_id)  # получение информации о профиле
@@ -18,7 +17,7 @@ class Profile:
         self.url_photos_profile = {}  # перечень лайков и url с фото в формате {'0': 'https://'}
         self.path_photos = self.create_folder(f'{self.first_name}_{self.last_name}')  # путь к папке с фото
 
-    def user_get(self, user_id, *, access_token=settings.TOKEN_VK, version='5.131'):
+    def user_get(self, user_id='1', *, access_token=settings.TOKEN_VK, version='5.131'):
         # запрос информации о пользователе
         url = 'https://api.vk.com/method/users.get'
         params = {
@@ -32,7 +31,7 @@ class Profile:
         return response.json()
 
     def save_photos(
-        self, user_id=settings.ID_VK, *, access_token=settings.TOKEN_VK,
+        self, user_id='1', *, access_token=settings.TOKEN_VK,
         album_id='profile', extended='1', version='5.131'
     ):
         # загрузка фотографий альбома аватарок пользователя
@@ -83,7 +82,7 @@ class Profile:
                 file_txt.write(f'Фотографий не скачано из-за отсутствия ссылки: {empty_photos}')
 
     def __str__(self):
-        return f'id: {self.user_id} Name: {self.first_name}, Family: {self.last_name}'    @staticmethod
+        return f'id: {self.user_id} Name: {self.first_name}, Family: {self.last_name}'
 
     def __verify_name_file(self, name, list_names, number=0):
         # проверка на наличие файлов с одинаковым количеством лайков
