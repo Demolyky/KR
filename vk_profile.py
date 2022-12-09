@@ -3,6 +3,7 @@ import settings
 import json
 import os
 from threading import Thread
+import sys
 
 
 class Profile:
@@ -10,7 +11,7 @@ class Profile:
     def __init__(self, user_id=settings.ID_VK):
         self.access_token = settings.TOKEN_VK  # Токен для авторизации
         self.user_id = user_id  # ID пользователя
-        profile_info = self.user_get(self.user_id).json()  # получение информации о профиле
+        profile_info = self.user_get(self.user_id)  # получение информации о профиле
         self.first_name = profile_info['response'][0]['first_name']  # определение имени пользователя
         self.last_name = profile_info['response'][0]['last_name']  # определение фамилии пользователя
         self.url_photos_profile = []  # перечень лайков и url с фото в формате {'0': 'https://'}
@@ -25,8 +26,9 @@ class Profile:
             'v': version
         }
         response = requests.get(url, params={**params})
+        self.error_detected(response)
         Thread(target=self.__save_json, args=(response, 'userinfo',)).start()
-        return response
+        return response.json()
 
     def save_photos(
         self, user_id=settings.ID_VK, *, access_token=settings.TOKEN_VK,
@@ -43,10 +45,12 @@ class Profile:
             'count': count
         }
         response = requests.get(url, params={**params})
+        self.error_detected(response)
         self.url_photos_profile = list(self.__search_photos_and_likes(response))
         Thread(target=self.__save_json, args=(response, 'photos',)).start()
         self.download_photo()
         return response
+
 
     def __save_json(self, response, file_name):
         # сохранение запросов в json файл корневой папки
@@ -86,3 +90,13 @@ class Profile:
 
     def __str__(self):
         return f'id: {self.user_id} Name: {self.first_name}, Family: {self.last_name}'
+
+    def error_detected(self, response):
+        # проверка запроса на ошибки
+        if not response.status_code == 200:
+            print(f'Ошибка запроса к ВК № {response.status_code}')
+            sys.exit()
+        elif 'error' in response.json().keys():
+            print(f'error: {response.json()["error"]["error_msg"]}')
+            sys.exit()
+

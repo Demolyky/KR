@@ -39,7 +39,7 @@ class YaUploader:
         url = self.HOST + '/v1/disk/resources/'
         params = {'path': ya_path}
         response = requests.put(url, headers=self._get_headers(), params=params)
-        if 'error' in response.json().keys():
+        if 'error' in response.json():
             print(response.json()['message'])
         return f'Папка {detection_last_name_in_path(path_folder)} создана'
 
