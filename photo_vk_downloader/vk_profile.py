@@ -4,6 +4,7 @@ import json
 import os
 from threading import Thread
 import sys
+from progress.bar import IncrementalBar
 
 
 class Profile:
@@ -14,7 +15,8 @@ class Profile:
         profile_info = self.user_get(self.user_id)  # получение информации о профиле
         self.first_name = profile_info['response'][0]['first_name']  # определение имени пользователя
         self.last_name = profile_info['response'][0]['last_name']  # определение фамилии пользователя
-        self.url_photos_profile = {}  # перечень лайков и url с фото в формате {'0': 'https://'}
+        self.photos_in_profile = []  # перечень лайков и url с фото в формате [{'file_name': '','size': '', 'url': ''}]
+
         self.path_photos = self.create_folder(f'{self.first_name}_{self.last_name}')  # путь к папке с фото
 
     def user_get(self, user_id='1', *, access_token=settings.TOKEN_VK, version='5.131'):
@@ -27,12 +29,12 @@ class Profile:
         }
         response = requests.get(url, params={**params})
         self.__error_detected(response)
-        Thread(target=self.save_json, args=(response, 'userinfo',)).start()
+        # Thread(target=self.save_json, args=(response.json(), 'userinfo',)).start()
         return response.json()
 
     def save_photos(
         self, user_id='1', *, access_token=settings.TOKEN_VK,
-        album_id='profile', extended='1', version='5.131'
+        album_id='profile', extended='1', version='5.131', count='5'
     ):
         # загрузка фотографий альбома аватарок пользователя
         url = 'https://api.vk.com/method/photos.get'
@@ -41,18 +43,18 @@ class Profile:
             'v': version,
             'owner_id': self.user_id if user_id else user_id,
             'album_id': album_id,
-            'extended': extended
+            'extended': extended,
+            'count': count
         }
         response = requests.get(url, params={**params})
         self.__error_detected(response)
-        self.url_photos_profile = self.__search_photos_and_likes(response)
-        Thread(target=self.save_json, args=(response, 'photos',)).start()
+        self.__search_photos_and_likes(response)
+        Thread(target=self.save_json, args=(self.photos_in_profile, 'photo_info',)).start()
         self.download_photo()
         return response
 
-    def save_json(self, response, file_name):
+    def save_json(self, information, file_name):
         # сохранение запросов в json файл корневой папки
-        information = response.json()
         path = self.create_folder('profile_info')
         with open(f'{path}/{file_name}.json', "w+") as file:
             json.dump(information, file, indent=4, ensure_ascii=False)
@@ -60,26 +62,28 @@ class Profile:
     def __search_photos_and_likes(self, response):
         # поиск фотографии максимального разрешения из запроса
         photos_info = response.json()
-        url_photos_profile = {}
         for photos in photos_info['response']['items']:
-            url = self.__search_high_resolution(photos)
-            file_name = self.__verify_name_file(str(photos['likes']['count']), list(url_photos_profile.keys()))
-            url_photos_profile[file_name] = url
-        return url_photos_profile
+            file_name = self.__verify_name_file(str(photos['likes']['count']), list(names['file_name'] for names in self.photos_in_profile))
+            size, url = self.__search_high_resolution(photos)
+            self.photos_in_profile.append({'file_name': file_name, 'size': size, 'url': url})
 
     def download_photo(self):
         # запрос на скачивание фото по ссылке
         empty_photos = 0
-        for likes, url in self.url_photos_profile.items():
-            if url:
-                response = requests.get(url)
-                with open(f'{self.path_photos}/{likes}.jpg', 'wb') as img:
+        progressbar = IncrementalBar(max=len(self.photos_in_profile)).start()
+        for photo_info in self.photos_in_profile:
+            if photo_info['url']:
+                response = requests.get(photo_info['url'])
+                with open(f'{self.path_photos}/{photo_info["file_name"]}.jpg', 'wb') as img:
                     img.write(response.content)
             else:
                 empty_photos += 1
+            progressbar.next()
         if empty_photos > 0:
             with open('empty_photos.txt', 'w+') as file_txt:
                 file_txt.write(f'Фотографий не скачано из-за отсутствия ссылки: {empty_photos}')
+        progressbar.finish()
+        print('Фото загружены')
 
     def __str__(self):
         return f'id: {self.user_id} Name: {self.first_name}, Family: {self.last_name}'
@@ -97,12 +101,13 @@ class Profile:
     @staticmethod
     def create_folder(folder_name):
         # создание папки для сохранения фото
-        path = os.getcwd() + f'/{folder_name}'
+        path = '/'.join(os.getcwd().split('/')[:-1])
+        path_folder = path + f'/{folder_name}'
         try:
-            os.mkdir(path)
-            return path
+            os.mkdir(path_folder)
+            return path_folder
         except FileExistsError:
-            return path
+            return path_folder
 
     @staticmethod
     def __error_detected(response):
@@ -116,16 +121,14 @@ class Profile:
 
     @staticmethod
     def __search_high_resolution(photos):
-        url = ''
-        index = 0
-        type_index = {}
+        # поиск фото высокого разрешения
+        size, url = '', ''
         types = ['w', 'z', 'y', 'x', 'm', 's', 'p', 'q', 'r', 'o']
         for photo in photos['sizes']:
-            type_index[photo['type']] = index
-            index += 1
-        for t in types:
-            if t in type_index:
-                url = photos['sizes'][type_index[t]]['url']
-                break
-        return url
+            for type_photo in types:
+                if type_photo in photo['type']:
+                    size = type_photo
+                    url = photo['url']
+                    break
+        return size, url
 

@@ -1,7 +1,7 @@
 import os
 import settings
 import requests
-from threading import Thread
+from progress.bar import IncrementalBar
 
 
 def detection_last_name_in_path(file_path: str):
@@ -27,12 +27,17 @@ class YaUploader:
         # функция загрузки файлов и папок в многопоточном режиме
         path_folders = [_ for _ in os.walk(path_folder)]  # инициализация файлов и папок
         main_path = detection_path(path_folder)
+        progressbar = IncrementalBar(max=len(path_folders[0][2]))
         for path in path_folders:
             ya_path = path[0].replace(main_path, '')
             self.create_folder(path[0], ya_path)
+            progressbar.start()
             if path[2]:
                 for file in path[2]:
-                    Thread(target=self.upload_file, args=(path[0] + '/' + file, ya_path + '/' + file,)).start()
+                    self.upload_file(path[0] + '/' + file, ya_path + '/' + file)
+                    progressbar.next()
+        progressbar.finish()
+        print('Фотографии загружены')
 
     def create_folder(self, path_folder, ya_path=''):
         # создание папок

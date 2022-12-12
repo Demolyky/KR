@@ -1,16 +1,17 @@
 import time
 from vk_profile import Profile
 from ya_uploader import YaUploader
-import sys
 
 
 def main():
     start_time = time.time()
     id_vk = input('Введите ID пользователя: ')
-    if id_vk.isdigit():
+    count = input('Число фотографий: ')
+
+    if id_vk.isdigit() and count.isdigit():
         # скачивания информации о пользователе на ПК
         person = Profile(id_vk)
-        person.save_photos()
+        person.save_photos(count=count if count else '5')
 
         # Загрузка в Яндекс диск
         uploader = YaUploader()
