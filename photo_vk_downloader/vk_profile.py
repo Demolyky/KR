@@ -70,7 +70,8 @@ class Profile:
     def download_photo(self):
         # запрос на скачивание фото по ссылке
         empty_photos = 0
-        progressbar = IncrementalBar(max=len(self.photos_in_profile)).start()
+        progressbar = IncrementalBar(max=len(self.photos_in_profile))
+        progressbar.start()
         for photo_info in self.photos_in_profile:
             if photo_info['url']:
                 response = requests.get(photo_info['url'])
