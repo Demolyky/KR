@@ -29,7 +29,7 @@ class Profile:
         }
         response = requests.get(url, params={**params})
         self.__error_detected(response)
-        # Thread(target=self.save_json, args=(response.json(), 'userinfo',)).start()
+        Thread(target=self.save_json, args=(response.json(), 'userinfo',)).start()
         return response.json()
 
     def save_photos(
